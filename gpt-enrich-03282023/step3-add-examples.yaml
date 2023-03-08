@@ -1,0 +1,244 @@
+openapi: "3.0.0"
+info:
+  version: 1.0.0
+  title: Swagger Petstore
+  description: A sample API that uses a petstore as an example to demonstrate features in the OpenAPI 3.0 specification
+  termsOfService: http://swagger.io/terms/
+  contact:
+    name: Swagger API Team
+    email: apiteam@swagger.io
+    url: http://swagger.io
+  license:
+    name: Apache 2.0
+    url: https://www.apache.org/licenses/LICENSE-2.0.html
+servers:
+  - url: http://petstore.swagger.io/api
+x-speakeasy-retries:
+  strategy: backoff
+  backoff:
+    initialInterval: 500 # 500 milliseconds
+    maxInterval: 60000 # 60 seconds
+    maxElapsedTime: 3600000 # 5 minutes
+    exponent: 1.5
+  statusCodes:
+    - 5XX
+  retryConnectionErrors: true
+paths:
+  /pets:
+    get:
+      summary: Retrieve a list of pets
+      operationId: findPets
+      description: Returns a list of all pets that the user has access to in the system.
+      parameters:
+        - name: tags
+          in: query
+          description: A comma-separated list of tags to filter the pet list by.
+          required: false
+          style: form
+          schema:
+            type: array
+            items:
+              type: string
+          examples:
+            find-all-pets:
+              value: ""
+            find-one-friendly-pet:
+              value: ["friendly"]
+        - name: limit
+          in: query
+          description: The maximum number of pets to return.
+          required: false
+          schema:
+            type: integer
+            format: int32
+          examples:
+            find-one-friendly-pet:
+              value: 1
+      responses:
+        "200":
+          description: The list of pets was retrieved successfully
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Pet"
+        default:
+          description: An unexpected error occurred
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+    post:
+      summary: Add a new pet
+      operationId: addPet
+      description: Adds a new pet to the store. Duplicates are allowed.
+      requestBody:
+        description: The pet to add to the store
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/NewPet"
+      responses:
+        "200":
+          description: The new pet was added successfully
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Pet"
+        default:
+          description: An unexpected error occurred
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+  /pets/{id}:
+    get:
+      summary: Get a pet by ID
+      operationId: getPet
+      description: Returns a pet with the specified ID if it exists and the user has access to it
+      parameters:
+        - name: id
+          in: path
+          description: The ID of the pet to retrieve
+          required: true
+          schema:
+            type: integer
+            format: int64
+          examples:
+            qwerty-get:
+              value: 1
+            dvorak-get:
+              value: 2
+            max-get:
+              value: 3
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Pet"
+              examples:
+                qwerty-get:
+                  $ref: "#/components/examples/qwerty"
+                dvorak-get:
+                  $ref: "#/components/examples/dvorak"
+                max-get:
+                  $ref: "#/components/examples/max"
+        "404":
+          description: The specified pet was not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+              examples:
+                no-pet:
+                  value:
+                    code: 404
+                    message: "Pet not found"
+        default:
+          description: An unexpected error occurred
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+    delete:
+      summary: Delete a pet by ID
+      operationId: deletePet
+      description: Deletes a pet with the specified ID if it exists and the user has permission to delete it.
+      parameters:
+        - name: id
+          in: path
+          description: The ID of the pet to delete. This parameter is required.
+          required: true
+          schema:
+            type: integer
+            format: int64
+      responses:
+        "204":
+          description: The pet was successfully deleted. The response body is empty.
+        default:
+          description: unexpected error
+          content:
+            application/json:
+              schema:
+              $ref: "#/components/schemas/Error"
+
+components:
+  schemas:
+    Pet:
+      title: Pet
+      description: A pet with an ID and name, and an optional tag
+      allOf:
+        - $ref: "#/components/schemas/NewPet"
+        - type: object
+          required:
+            - id
+          properties:
+            id:
+              type: integer
+              format: int64
+      example:
+        $ref: "#/components/examples/qwerty"
+
+    NewPet:
+      title: New Pet
+      description: A new pet with a required name and an optional tag
+      type: object
+      required:
+        - name
+      properties:
+        name:
+          type: string
+        tag:
+          type: string
+      example:
+        name: qwerty
+        tag: friendly
+
+    Error:
+      title: Error
+      description: An error response with a code and message
+      type: object
+      required:
+        - code
+        - message
+      properties:
+        code:
+          type: integer
+          format: int32
+        message:
+          type: string
+
+  examples:
+    qwerty:
+      value:
+        id: 1
+        name: qwerty
+        tag: friendly
+    dvorak:
+      value:
+        id: 2
+        name: dvorak
+        tag: smart
+    max:
+      value:
+        id: 3
+        name: max
+        tag: friendly
+
+webhooks:
+  newPet:
+    # This is a Path Item Object, the only difference is that the request is initiated by the API provider
+    post:
+      requestBody:
+        description: Information about a new pet in the system
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/NewPet"
+      responses:
+        "200":
+          description: Return a 200 status to indicate that the data was received successfully
